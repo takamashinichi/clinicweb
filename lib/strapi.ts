@@ -1,4 +1,19 @@
-import { Document } from "@contentful/rich-text-types";
+import { createClient } from '@strapi/client';
+
+// API基本URL
+const API_URL = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'http://localhost:1337';
+const API_TOKEN = process.env.NEXT_PUBLIC_STRAPI_API_TOKEN;
+
+// Strapiクライアントインスタンスの作成
+const strapiClient = createClient({
+  url: API_URL,
+  prefix: '/api',
+  axiosOptions: {
+    headers: API_TOKEN ? {
+      Authorization: `Bearer ${API_TOKEN}`,
+    } : {},
+  },
+});
 
 // Strapiの基本的なレスポンス型
 export type StrapiResponse<T> = {
@@ -234,37 +249,20 @@ export type Recruitment = {
   isActive: boolean;
 };
 
-// API基本URL
-const API_URL = process.env.NEXT_PUBLIC_STRAPI_API_URL || 'http://localhost:1337';
-const API_TOKEN = process.env.NEXT_PUBLIC_STRAPI_API_TOKEN;
-
 // Strapiからデータを取得する基本関数
 async function fetchAPI(endpoint: string, params: Record<string, any> = {}) {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // APIトークンがある場合は追加
-  if (API_TOKEN) {
-    headers['Authorization'] = `Bearer ${API_TOKEN}`;
+  try {
+    const response = await strapiClient.request({
+      method: 'GET',
+      url: endpoint,
+      params: params,
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching from Strapi API (${endpoint}):`, error);
+    throw error;
   }
-
-  const queryString = Object.keys(params).length
-    ? `?${Object.entries(params)
-        .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
-        .join('&')}`
-    : '';
-
-  const response = await fetch(`${API_URL}/api/${endpoint}${queryString}`, {
-    method: 'GET',
-    headers,
-  });
-
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  return await response.json();
 }
 
 // 各コンテンツタイプのデータ取得関数
